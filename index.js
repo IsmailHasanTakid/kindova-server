@@ -119,11 +119,41 @@ app.get("/api/events/my-events", async (req, res) => {
     }
 });
 
+// Get Joined Events
+app.get("/api/events/joined", async (req, res) => {
+    try {
+        const { email } = req.query;
 
+        if (!email) {
+            return res.status(400).send({
+                success: false,
+                message: "Email is required",
+            });
+        }
+
+        const joinedEvents = await eventsCollection.find({
+            "joinedUsers.email": email,
+        }).toArray();
+
+        res.send({
+            success: true,
+            events: joinedEvents,
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to get joined events",
+        });
+    }
+});
 // Get single event (public, owner email )
 app.get("/api/events/:id", async (req, res) => {
     try {
         const { id } = req.params;
+        const { email } = req.query;
 
         if (!ObjectId.isValid(id)) {
             return res.status(400).send({
@@ -132,10 +162,7 @@ app.get("/api/events/:id", async (req, res) => {
             });
         }
 
-        const event = await eventsCollection.findOne(
-            { _id: new ObjectId(id) },
-            { projection: { creatorEmail: 0 } }
-        );
+        const event = await eventsCollection.findOne({ _id: new ObjectId(id), });
 
         if (!event) {
             return res.status(404).send({
@@ -144,12 +171,144 @@ app.get("/api/events/:id", async (req, res) => {
             });
         }
 
-        res.send({ success: true, event });
+        const isOwner = !!email && event.creatorEmail?.toLowerCase() === email.toLowerCase();
+        const { creatorEmail, ...publicEvent } = event;
+        res.send({
+            success: true,
+            event: publicEvent,
+            isOwner,
+        });
+
     } catch (error) {
         console.error(error);
+
         res.status(500).send({
             success: false,
             message: "Failed to get event",
+        });
+    }
+});
+
+
+// Join Event
+app.post("/api/events/:id/join", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { email, name, image } = req.body;
+
+        if (!ObjectId.isValid(id) || !email || !name) {
+            return res.status(400).send({
+                success: false,
+                message: "Invalid request",
+            });
+        }
+        const event = await eventsCollection.findOne({ _id: new ObjectId(id), });
+        if (!event) {
+            return res.status(404).send({
+                success: false,
+                message: "Event not found",
+            });
+        }
+        if (event.creatorEmail?.toLowerCase() === email.toLowerCase()) {
+            return res.status(400).send({
+                success: false,
+                message: "You cannot join your own event",
+            });
+        }
+        const alreadyJoined = event.joinedUsers?.some(
+            (user) => user.email === email
+        );
+
+        if (alreadyJoined) {
+            return res.status(400).send({
+                success: false,
+                message: "You have already joined this event",
+            });
+        }
+        const result = await eventsCollection.updateOne({
+            _id: new ObjectId(id),
+            creatorEmail: { $ne: email },
+            "joinedUsers.email": { $ne: email },
+        },
+            {
+                $push: {
+                    joinedUsers: {
+                        email,
+                        name,
+                        image: image || "",
+                        joinedAt: new Date().toISOString(),
+                    },
+                },
+            }
+        );
+
+        if (!result.modifiedCount) {
+            return res.status(400).send({
+                success: false,
+                message: "You have already joined this event",
+            });
+        }
+
+        res.send({
+            success: true,
+            message: "Successfully joined the event",
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to join event",
+        });
+    }
+});
+
+
+
+// Leave Event
+app.delete("/api/events/:id/leave", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { email } = req.body;
+
+        if (!ObjectId.isValid(id) || !email) {
+            return res.status(400).send({
+                success: false,
+                message: "Invalid request",
+            });
+        }
+
+        const result = await eventsCollection.updateOne(
+            {
+                _id: new ObjectId(id),
+                "joinedUsers.email": email,
+            },
+            {
+                $pull: {
+                    joinedUsers: { email },
+                },
+            }
+        );
+
+        if (!result.modifiedCount) {
+            return res.status(404).send({
+                success: false,
+                message: "You have not joined this event",
+            });
+        }
+
+        res.send({
+            success: true,
+            message: "Successfully left the event",
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to leave event",
         });
     }
 });
