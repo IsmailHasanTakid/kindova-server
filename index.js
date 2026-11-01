@@ -34,9 +34,9 @@ async function run() {
 
 run();
 
-// ---------------------------------------------------------------------------
+
 // Create Event
-// ---------------------------------------------------------------------------
+
 app.post("/api/events", async (req, res) => {
     try {
         const eventData = req.body;
@@ -57,26 +57,21 @@ app.post("/api/events", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
+
 // Get all events (optional filters: ?category=&search=&upcoming=true)
-// ---------------------------------------------------------------------------
+
 app.get("/api/events", async (req, res) => {
     try {
         const { category, search, upcoming } = req.query;
         const query = {};
-
-        // Category filter
         if (category && category !== "All") {
             query.eventType = category;
         }
 
-        // Title search (case-insensitive, special character safe)
         if (search && search.trim()) {
             const safe = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             query.title = { $regex: safe, $options: "i" };
         }
-
-        // Only today or future events
         if (upcoming === "true") {
             query.eventDate = { $gte: new Date().toISOString().split("T")[0] };
         }
@@ -96,10 +91,8 @@ app.get("/api/events", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
 // Get events created by a specific user
-// NOTE: must stay ABOVE "/api/events/:id"
-// ---------------------------------------------------------------------------
+
 app.get("/api/events/my-events", async (req, res) => {
     try {
         const { email } = req.query;
@@ -126,9 +119,8 @@ app.get("/api/events/my-events", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// Get single event (public, owner email hidden)
-// ---------------------------------------------------------------------------
+
+// Get single event (public, owner email )
 app.get("/api/events/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -162,9 +154,8 @@ app.get("/api/events/:id", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
 // Update event (only by its creator)
-// ---------------------------------------------------------------------------
+
 const EDITABLE = [
     "title", "eventType", "description", "eventDate", "eventTime",
     "location", "fullAddress", "thumbnailUrl", "volunteerLimit",
@@ -200,9 +191,7 @@ app.patch("/api/events/:id", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------------
 // Delete event (only by its creator)
-// ---------------------------------------------------------------------------
 app.delete("/api/events/:id", async (req, res) => {
     try {
         const { id } = req.params;
