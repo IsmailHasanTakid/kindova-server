@@ -42,7 +42,6 @@ app.post("/api/events", async (req, res) => {
         const eventData = req.body;
 
         const result = await eventsCollection.insertOne(eventData);
-
         res.status(201).send({
             success: true,
             message: "Event created successfully",
@@ -63,21 +62,16 @@ app.get("/api/events/recent", async (req, res) => {
     try {
         const events = await eventsCollection
             .find({
-                eventDate: {
-                    $gte: new Date().toISOString().split("T")[0],
-                },
+                eventDate: { $gte: new Date().toISOString().split("T")[0], },
             }).project({ creatorEmail: 0 }).sort({ createdAt: -1 })
             .sort({ eventDate: 1, eventTime: 1 })
             .limit(6)
             .toArray();
 
-        res.send({
-            success: true, events,
-        });
+        res.send({ success: true, events, });
 
     } catch (error) {
         console.error(error);
-
         res.status(500).send({
             success: false,
             message: "Failed to get recent events",
@@ -100,7 +94,6 @@ app.get("/api/events/previous", async (req, res) => {
         res.send({ success: true, events, });
     } catch (error) {
         console.error(error);
-
         res.status(500).send({
             success: false,
             message: "Failed to get previous events",
