@@ -193,7 +193,6 @@ app.get("/api/events/my-events", verifyToken, async (req, res) => {
             .find({ creatorEmail: email })
             .sort({ createdAt: -1 })
             .toArray();
-
         res.send({ success: true, events });
     } catch (error) {
         console.error(error);
@@ -203,7 +202,6 @@ app.get("/api/events/my-events", verifyToken, async (req, res) => {
         });
     }
 });
-
 
 // Get Joined Events
 app.get("/api/events/joined", verifyToken, async (req, res) => {
