@@ -102,36 +102,75 @@ app.get("/api/events/previous", async (req, res) => {
 });
 // Get all events (optional filters: ?category=&search=&upcoming=true)
 
+// Get all events with filters and search
 app.get("/api/events", async (req, res) => {
     try {
-        const { category, search, upcoming } = req.query;
+        const { category, search, status = "all" } = req.query;
+
         const query = {};
+
+        // Category filter
         if (category && category !== "All") {
             query.eventType = category;
         }
 
+        // Search by event title
         if (search && search.trim()) {
             const safe = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             query.title = { $regex: safe, $options: "i" };
         }
-        if (upcoming === "true") {
-            query.eventDate = { $gte: new Date().toISOString().split("T")[0] };
-        }
 
+        // Bangladesh current date
+        const today = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Dhaka",
+        }).format(new Date());
+
+        // Get all matching events
         const events = await eventsCollection
             .find(query, { projection: { creatorEmail: 0 } })
-            .sort({ eventDate: 1, eventTime: 1 })
             .toArray();
 
-        res.send({ success: true, events });
+        // Separate upcoming and previous events
+        const upcomingEvents = events
+            .filter((event) => event.eventDate >= today)
+            .sort((a, b) =>
+                a.eventDate.localeCompare(b.eventDate) ||
+                a.eventTime.localeCompare(b.eventTime)
+            );
+
+        const previousEvents = events
+            .filter((event) => event.eventDate < today)
+            .sort((a, b) =>
+                b.eventDate.localeCompare(a.eventDate) ||
+                b.eventTime.localeCompare(a.eventTime)
+            );
+
+        // Apply status filter
+        let filteredEvents = [];
+
+        if (status === "upcoming") {
+            filteredEvents = upcomingEvents;
+        } else if (status === "previous") {
+            filteredEvents = previousEvents;
+        } else {
+            filteredEvents = [...upcomingEvents, ...previousEvents];
+        }
+
+        res.send({
+            success: true,
+            events: filteredEvents,
+        });
+
     } catch (error) {
         console.error(error);
+
         res.status(500).send({
             success: false,
             message: "Failed to get events",
         });
     }
 });
+
 
 // Get events created by a specific user
 
