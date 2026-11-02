@@ -57,7 +57,56 @@ app.post("/api/events", async (req, res) => {
     }
 });
 
+// Get 6 Recent Events
 
+app.get("/api/events/recent", async (req, res) => {
+    try {
+        const events = await eventsCollection
+            .find({
+                eventDate: {
+                    $gte: new Date().toISOString().split("T")[0],
+                },
+            }).project({ creatorEmail: 0 }).sort({ createdAt: -1 })
+            .sort({ eventDate: 1, eventTime: 1 })
+            .limit(6)
+            .toArray();
+
+        res.send({
+            success: true, events,
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to get recent events",
+        });
+    }
+});
+
+
+// Get previous 6 events
+app.get("/api/events/previous", async (req, res) => {
+    try {
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", }).format(new Date());
+        const events = await eventsCollection
+            .find({ eventDate: { $lt: today, }, })
+            .project({ creatorEmail: 0 })
+            .sort({ eventDate: -1, eventTime: -1 })
+            .limit(6)
+            .toArray();
+
+        res.send({ success: true, events, });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+            success: false,
+            message: "Failed to get previous events",
+        });
+    }
+});
 // Get all events (optional filters: ?category=&search=&upcoming=true)
 
 app.get("/api/events", async (req, res) => {
