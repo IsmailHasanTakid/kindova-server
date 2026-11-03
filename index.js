@@ -10,7 +10,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 // JWT Security
-// JWT Security
 const JWKS = createRemoteJWKSet(
     new URL("http://localhost:3000/api/auth/jwks")
 );
