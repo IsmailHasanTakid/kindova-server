@@ -1,2 +1,26 @@
+# Dependencies
+/node_modules
+
+# Environment Variables
 .env
-node_modules
+.env.*
+
+# Allow example environment file
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build
+/build
+/dist
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
