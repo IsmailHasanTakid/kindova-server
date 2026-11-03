@@ -67,6 +67,15 @@ const getToday = () =>
 // Create Event
 app.post("/api/events", verifyToken, async (req, res) => {
     try {
+        //for checking future date
+        const { eventDate } = req.body;
+
+        if (!eventDate || eventDate <= getToday()) {
+            return res.status(400).send({
+                success: false,
+                message: "Event date must be in the future",
+            });
+        }
         console.log("Logged-in User:", req.user);
         const eventData = { ...req.body, creatorEmail: req.user.email, };
 
@@ -209,7 +218,9 @@ app.get("/api/events/joined", verifyToken, async (req, res) => {
 
         const events = await eventsCollection.find({
             "joinedUsers.email": email,
-        }).toArray();
+        })
+            .sort({ eventDate: 1, eventTime: 1 })
+            .toArray();
 
         res.send({ success: true, events });
     } catch (error) {
@@ -383,10 +394,20 @@ app.patch("/api/events/:id", verifyToken, async (req, res) => {
         const { id } = req.params;
         const email = req.user.email;
 
+
         if (!email || !ObjectId.isValid(id)) {
             return res.status(400).send({
                 success: false,
                 message: "Invalid request",
+            });
+        }
+
+        const { eventDate } = req.body;
+
+        if (eventDate && eventDate <= getToday()) {
+            return res.status(400).send({
+                success: false,
+                message: "Event date must be in the future",
             });
         }
 
