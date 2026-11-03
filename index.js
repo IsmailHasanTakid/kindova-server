@@ -192,15 +192,29 @@ app.get("/api/events", async (req, res) => {
             .project({ creatorEmail: 0 })
             .toArray();
 
+        const now = new Date();
+
         const upcoming = events
-            .filter(event => event.eventDate >= getToday())
+            .filter(event => {
+                const eventDateTime = new Date(
+                    `${event.eventDate}T${event.eventTime || "00:00"}:00+06:00`
+                );
+
+                return eventDateTime >= now;
+            })
             .sort((a, b) =>
                 a.eventDate.localeCompare(b.eventDate) ||
                 a.eventTime.localeCompare(b.eventTime)
             );
 
         const previous = events
-            .filter(event => event.eventDate < getToday())
+            .filter(event => {
+                const eventDateTime = new Date(
+                    `${event.eventDate}T${event.eventTime || "00:00"}:00+06:00`
+                );
+
+                return eventDateTime < now;
+            })
             .sort((a, b) =>
                 b.eventDate.localeCompare(a.eventDate) ||
                 b.eventTime.localeCompare(a.eventTime)
