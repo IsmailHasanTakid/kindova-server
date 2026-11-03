@@ -9,9 +9,12 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+
+
 // JWT Security
 const JWKS = createRemoteJWKSet(
-    new URL("http://localhost:3000/api/auth/jwks")
+    new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
 );
 
 const verifyToken = async (req, res, next) => {
@@ -37,24 +40,51 @@ const verifyToken = async (req, res, next) => {
         });
     }
 };
+
+
+
 const client = new MongoClient(process.env.MONGODB_URI);
 
 let eventsCollection;
+let dbConnection;
 
-async function run() {
-    await client.connect();
+async function connectDB() {
+    if (eventsCollection) return eventsCollection;
 
-    const db = client.db("kindova");
-    eventsCollection = db.collection("events");
+    if (!dbConnection) {
+        dbConnection = client.connect()
+            .then(() => {
+                const db = client.db("kindova");
+                eventsCollection = db.collection("events");
 
-    console.log("MongoDB Connected Successfully!");
+                console.log("MongoDB Connected Successfully!");
 
-    app.listen(process.env.PORT || 5000, () =>
-        console.log(`Kindova server running on port ${process.env.PORT || 5000}`)
-    );
+                return eventsCollection;
+            })
+            .catch((error) => {
+                dbConnection = null;
+                throw error;
+            });
+    }
+
+    return dbConnection;
 }
 
-run().catch(console.error);
+// Ensure MongoDB is connected before API requests
+app.use("/api", async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (error) {
+        console.error("MongoDB Connection Error:", error);
+
+        res.status(500).json({
+            success: false,
+            message: "Database connection failed",
+        });
+    }
+});
+
 
 
 // Bangladesh Today
@@ -492,3 +522,17 @@ app.delete("/api/events/:id", verifyToken, async (req, res) => {
 app.get("/", (req, res) => {
     res.send("Kindova server is Running");
 });
+
+// Local development server
+if (!process.env.VERCEL) {
+    connectDB()
+        .then(() => {
+            app.listen(process.env.PORT || 5000, () => {
+                console.log(
+                    `Kindova server running on port ${process.env.PORT || 5000}`
+                );
+            });
+        })
+        .catch(console.error);
+}
+export default app
